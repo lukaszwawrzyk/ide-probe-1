@@ -5,10 +5,9 @@ version.in(ThisBuild) := "0.1"
 scalaVersion.in(ThisBuild) := "2.13.1"
 intellijBuild.in(ThisBuild) := "202.5792.28-EAP-SNAPSHOT"
 licenses.in(ThisBuild) := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0"))
-skip in publish := true
+skip in publish.in(ThisBuild) := true
 
 import IdeaPluginAdapter._
-import IdeaPluginDevelopment._
 
 /**
  * By default, the sbt-idea-plugin gets applied to all of the projects.
