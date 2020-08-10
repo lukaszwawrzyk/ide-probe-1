@@ -108,6 +108,8 @@ lazy val examples = testModule("examples", "examples")
   .dependsOn(junitDriver)
   .settings(libraryDependencies += Dependencies.junitJupiterParams)
 
+lazy val scalaProbeApi = module("scala-probe-api", "extensions/scala/api").dependsOn(api)
+
 val commonSettings = Seq(
   libraryDependencies ++= Dependencies.junit,
   test in assembly := {},
