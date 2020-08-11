@@ -108,7 +108,16 @@ lazy val examples = testModule("examples", "examples")
   .dependsOn(junitDriver)
   .settings(libraryDependencies += Dependencies.junitJupiterParams)
 
-lazy val scalaProbeApi = module("scala-probe-api", "extensions/scala/api").dependsOn(api)
+lazy val scalaProbeApi = project(id = "scala-probe-api",path =  "extensions/scala/api", publish = true).dependsOn(api)
+
+lazy val scalaProbePlugin =
+  ideaPluginModule(id = "scala-probe-plugin", path = "extensions/scala/probePlugin")
+    .dependsOn(probePlugin, scalaProbeApi)
+    .settings(
+      intellijPluginName := "ideprobe-scala",
+      intellijPlugins += "org.intellij.scala:2020.2.734".toPlugin,
+      name := "scala-probe-plugin"
+    )
 
 val commonSettings = Seq(
   libraryDependencies ++= Dependencies.junit,
