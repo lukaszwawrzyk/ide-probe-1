@@ -18,6 +18,10 @@ object ProbeHandlers {
 
   private var handler: JsonRpc.Handler = collectHandlers()
 
+  private var extensions: List[ProbeHandlerContributor] = Nil
+
+  def registerHandler(contributor: ProbeHandlerContributor): Unit = extensions ::= contributor
+
   EP_NAME.addExtensionPointListener(
     new ExtensionPointListener[ProbeHandlerContributor] {
       override def extensionAdded(extension: ProbeHandlerContributor, pluginDescriptor: PluginDescriptor): Unit =
@@ -32,8 +36,8 @@ object ProbeHandlers {
   def get(): JsonRpc.Handler = handler
 
   private def collectHandlers(): ProbeHandler = {
-    EP_NAME
-      .getExtensions()
+    //(EP_NAME.getExtensions() ++ extensions)
+    EP_NAME.getExtensions()
       .foldLeft(new ProbeHandler())((handler, contributor) => contributor.registerHandlers(handler))
   }
 

@@ -7,31 +7,53 @@ import org.junit.Assert
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import org.virtuslab.ideprobe.Extensions._
-import org.virtuslab.ideprobe.protocol.{JUnitRunConfiguration, ModuleRef}
+import org.virtuslab.ideprobe.dependencies.Plugin
+import org.virtuslab.ideprobe.protocol.{JUnitRunConfiguration, ModuleRef, Setting}
+import org.virtuslab.intellij.scala.SbtProbeDriver
+import org.virtuslab.intellij.scala.protocol.{SbtProjectSettings, SbtProjectSettingsChangeRequest}
 
 import scala.concurrent.ExecutionContext
 
-class ModuleTest extends RobotExtensions {
+class SbtTestSuite {
   protected implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(Executors.newCachedThreadPool())
 
-  private def fixtureFromConfig(configName: String): IntelliJFixture =
-    IntelliJFixture.fromConfig(Config.fromClasspath(configName))
+  protected def fixtureFromConfig(configName: String): IntelliJFixture =
+    transformFixture(IntelliJFixture.fromConfig(Config.fromClasspath(configName)))
 
+  val scalaProbePlugin: Plugin = Plugin.Bundled(s"ideprobe-scala-${BuildInfo.version}.zip")
+
+  private def transformFixture(fixture: IntelliJFixture): IntelliJFixture = {
+    fixture
+      .copy(plugins = scalaProbePlugin +: fixture.plugins)
+  }
+
+  implicit def pantsProbeDriver(driver: ProbeDriver): SbtProbeDriver = SbtProbeDriver(driver)
+}
+
+class ModuleTest extends SbtTestSuite {
   /**
    * The presence of .idea can prevent automatic import of gradle project
    */
   private def deleteIdeaSettings(intelliJ: RunningIntelliJFixture) = {
     val path = intelliJ.workspace.resolve(".idea")
-    Option.when(Files.exists(path))(path.delete())
+    if(Files.exists(path)) path.delete()
   }
 
   @ParameterizedTest
   @ValueSource(
-    strings = Array("projects/shapeless/ideprobe.conf", "projects/cats/ideprobe.conf", "projects/dokka/ideprobe.conf")
+//    strings = Array("projects/shapeless/ideprobe.conf", "projects/cats/ideprobe.conf", "projects/dokka/ideprobe.conf")
+    strings = Array("projects/shapeless/ideprobe.conf")
   )
   def verifyModulesPresent(configName: String): Unit = fixtureFromConfig(configName).run { intelliJ =>
     deleteIdeaSettings(intelliJ)
     intelliJ.probe.openProject(intelliJ.workspace)
+    intelliJ.probe.setSbtProjectSettings(
+      SbtProjectSettingsChangeRequest(
+        useSbtShellForImport = Setting.Changed(true),
+        useSbtShellForBuild = Setting.Changed(true),
+        allowSbtVersionOverride = Setting.Changed(false)
+      )
+    )
     val project = intelliJ.probe.projectModel()
     val projectModules = project.modules.map(_.name)
     val modulesFromConfig = intelliJ.config[Seq[String]]("modules.verify")
@@ -40,18 +62,18 @@ class ModuleTest extends RobotExtensions {
     Assert.assertTrue(s"Modules $missingModules are missing", missingModules.isEmpty)
   }
 
-  @ParameterizedTest
-  @ValueSource(
-    strings = Array("projects/shapeless/ideprobe.conf", "projects/cats/ideprobe.conf", "projects/dokka/ideprobe.conf")
-  )
-  def runTestsInModules(configName: String): Unit = fixtureFromConfig(configName).run { intelliJ =>
-    deleteIdeaSettings(intelliJ)
-    intelliJ.probe.openProject(intelliJ.workspace)
-    val modulesFromConfig = intelliJ.config[Seq[String]]("modules.test")
-    val moduleRefs = modulesFromConfig.map(ModuleRef(_))
-    val runConfigs = moduleRefs.map(JUnitRunConfiguration.module)
-    val result = runConfigs.map(config => config.module -> intelliJ.probe.run(config)).toMap
-
-    Assert.assertTrue(s"Tests in modules ${result.values} failed", result.values.forall(_.isSuccess))
-  }
+//  @ParameterizedTest
+//  @ValueSource(
+//    strings = Array("projects/shapeless/ideprobe.conf", "projects/cats/ideprobe.conf", "projects/dokka/ideprobe.conf")
+//  )
+//  def runTestsInModules(configName: String): Unit = fixtureFromConfig(configName).run { intelliJ =>
+//    deleteIdeaSettings(intelliJ)
+//    intelliJ.probe.openProject(intelliJ.workspace)
+//    val modulesFromConfig = intelliJ.config[Seq[String]]("modules.test")
+//    val moduleRefs = modulesFromConfig.map(ModuleRef(_))
+//    val runConfigs = moduleRefs.map(JUnitRunConfiguration.module)
+//    val result = runConfigs.map(config => config.module -> intelliJ.probe.run(config)).toMap
+//
+//    Assert.assertTrue(s"Tests in modules ${result.values} failed", result.values.forall(_.isSuccess))
+//  }
 }

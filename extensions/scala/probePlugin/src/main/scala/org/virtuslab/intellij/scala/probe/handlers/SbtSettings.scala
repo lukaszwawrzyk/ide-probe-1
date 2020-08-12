@@ -34,9 +34,5 @@ object SbtSettings {
       setSetting(toSet.allowSbtVersionOverride)(_.setAllowSbtVersionOverride(_))
     }
 
-  private def getSbtSettings(project: Project) = {
-    ExternalSystemApiUtil
-      .getSettings(project, new ProjectSystemId("SBT", "sbt"))
-      .asInstanceOf[SbtProjectSettingsFromPlugin]
-  }
+  private def getSbtSettings(project: Project) = SbtProjectSettingsFromPlugin.forProject(project).get
 }
